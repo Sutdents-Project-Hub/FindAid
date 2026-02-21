@@ -1,108 +1,108 @@
 # LabMate AI
-**Your Intelligent Laboratory and Research Collaboration Partner**
+**您的全方位智慧科研協作夥伴**
 
-LabMate AI is a comprehensive experiment management and collaboration tool tailored for researchers, students, and educators. It combines strict data structuring with flexible AI assistance to help you track experiment progress, manage variables, and gain instant insights into experiment design.
-
----
-
-## Core Features
-
-### 1. Experiment Data Management
-* **Version Control**: Automatically logs versions for every data update, ensuring complete traceability.
-* **Structured Storage**: Safely stores names, descriptions, creators, and data in an SQLite database.
-* **History Tracking**: Framework in place to review and restore historical data versions.
-
-### 2. Experiment Plan Collaboration
-* **Plan Formulation**: Define research goals, and establish lists for experimental steps and necessary materials.
-* **Multi-user Collaboration**: Supports adding and removing collaborators to foster teamwork.
-* **Dynamic Adjustment**: Readily modify steps and materials to flexibly respond to experimental changes.
-
-### 3. AI Research Assistant
-* **Flow Design**: Input a research goal (e.g., "Research plant photosynthesis") and the AI will auto-generate a recommended procedure.
-* **Problem Decomposition**: Break down complex research questions into actionable sub-problems.
-* **Standard Operating Procedures (SOP)**: Generate standard operation steps and safety precautions for your experiments.
-
-### 4. Instrument Guide
-* **Smart Query**: Quickly look up manuals and documents using keywords.
-* **Extensibility**: Supports custom instrument databases strictly defined via JSON formatting.
+LabMate AI 是一款專為科研人員、學生及教育工作者設計的全面性實驗管理與協作工具。它結合了嚴謹的資料結構保存方式與靈活的 AI 輔助功能，幫助您輕鬆追蹤實驗進度、管理各項變數，並迅速獲得關於實驗設計的相關建議。
 
 ---
 
-## Getting Started
+## 核心功能
 
-### System Requirements
-* Python 3.6 or higher
-* Streamlit (for UI graphical interface)
-* Built-in SQLite3 support (included in Python standard library)
+### 1. 實驗數據管理
+* **版本控制**：自動替每一次的數據更新紀錄版本號，確保實驗數據的完整可追溯性。
+* **結構化儲存**：使用 SQLite 資料庫安全地儲存包含實驗名稱、描述、建立者以及詳細實驗數據等資訊。
+* **歷史追蹤**：具備回顧以往歷史數據及修復版本的能力（框架已預留）。
 
-### Installation Steps
+### 2. 實驗計畫協作
+* **建構計畫**：使用者可自定義研究目標，並透過建立步驟清單及所需材料來完善計畫。
+* **多人協作**：支援新增或移除協作者功能，強化團隊間的合作效率。
+* **動態調整**：團隊能隨時根據實驗的變化，彈性修改正在進行中的實驗步驟與內容。
 
-1. **Download the Project**
-   Clone or download the archive to your local machine.
+### 3. AI 科研助理
+* **流程設計**：只要輸入您的研究目標（例如：「研究植物光合作用」），AI 即可為您自動生成一套建議的實驗操作流程。
+* **問題拆解**：幫助使用者將複雜龐大的研究問題，拆解成可具體執行的子問題。
+* **標準作業程序 (SOP)**：針對實驗內容，快速生成出標準操作步驟及相關安全注意事項。
 
-2. **Environment Setup**
-   The core project utilizes Python standard libraries. To run the graphical interface, install Streamlit:
+### 4. 儀器使用指南
+* **智慧查詢**：透過輸入關鍵字，即可快速查找實驗室對應的儀器文檔與使用手冊。
+* **高擴充性**：支援使用嚴格的 JSON 格式定義，讓您能自由自訂及擴充專屬的儀器資料庫。
+
+---
+
+## 快速開始
+
+### 系統需求
+* Python 3.6 或以上版本
+* Streamlit (用於開啟圖形化使用者介面)
+* 內建 SQLite3 支援 (Python 標準庫已包含)
+
+### 安裝步驟
+
+1. **下載專案**
+   將專案檔案下載或 Clone 至您的本地端電腦中。
+
+2. **環境設定**
+   本專案核心執行檔僅使用 Python 標準庫，但為了能順利運行我們所提供的網頁圖形化介面，請先安裝 Streamlit：
    ```bash
    pip install streamlit
    ```
 
-### Execution Instructions
+### 執行說明
 
-**Option 1: Graphical User Interface (Recommended)**
-Run the application using Streamlit to access the modern web interface.
+**選項一：圖形化使用者介面 (推薦使用)**
+使用 Streamlit 執行應用程式，將可開啟現代化且極具互動性的網頁介面。
 ```bash
 streamlit run app.py
 ```
-This will open a local web server (usually at `http://localhost:8501`) where you can interact seamlessly via your default web browser.
+此指令會啟動一個本地端網頁伺服器（通常位於 `http://localhost:8501`），您可以直接從您的預設瀏覽器中進行流暢的操作。
 
-**Option 2: Terminal Interface Demo**
-To run the automated console demonstration:
+**選項二：終端機互動介面展示**
+若要觀看終端機環境下的自動化展示流程，請輸入：
 ```bash
 python "LabMate AI.py" demo
 ```
-To run the interactive terminal interface:
+若要在終端機環境下進行文字互動，請輸入：
 ```bash
 python "LabMate AI.py"
 ```
 
 ---
 
-## Usage Guide (Via Web UI)
+## 使用教學 (透過 Web UI 操作)
 
-### 1. Identify Yourself
-When you launch the Streamlit application, enter your name or user ID in the dedicated field on the left sidebar. All actions logged will be attributed to this identity.
+### 1. 使用者身分設定
+當您啟動 Streamlit 應用程式後，請先於左側的側邊欄位中，找到「當前使用者 ID」欄位並輸入您的姓名或帳號識別碼。此後所有在系統內紀錄的動作，都將會標記為該身分。
 
-### 2. Manage Experiments
-Navigate to the "Experiment Management" tab. You can seamlessly view registered experiments, check their parameters, or create entirely new tracking entries. Data updates can be submitted via JSON format in the UI.
+### 2. 實驗管理
+請導航至「實驗數據管理」標籤頁。在此頁面中，您可以檢視所有已註冊的實驗、確認實驗的設定參數，或是建立一個全新的追蹤紀錄。關於數據更新，可以直接透過介面提供的 JSON 格式輸入框進行提交。
 
-### 3. Collaborate on Plans
-Go to the "Plan Collaboration" tab. Here you can establish overarching research goals and invite collaborators. You can also define sequential steps essential for experiment execution.
+### 3. 計畫協作
+請切換至「實驗計畫協作」標籤頁。您可以在此建立宏觀的研究計畫目標並邀請團隊成員加入協作。另外，您也能替您的計畫定義出實驗執行所需的標準序列步驟。
 
-### 4. AI Interaction
-Switch over to the "AI Research Assistant" to interact via text prompts. Supported system prompts include:
-* `儀器使用 [Instrument Name]`
-* `設計實驗流程 [Research Goal]`
-* `拆分問題 [Research Question]`
-* `標準流程 [Experiment Details]`
+### 4. AI 互動與查詢
+請前往「AI 科研助理」區域以透過文字提示與系統互動。目前系統支援下列標準指令格式：
+* `儀器使用 [儀器名稱]`
+* `設計實驗流程 [研究目標]`
+* `拆分問題 [研究問題]`
+* `標準流程 [實驗細節]`
 
 ---
 
-## Advanced Settings: Adding Instrument Documents
+## 進階設定：新增儀器文檔
 
-To enable customized instrument queries, place JSON-formatted instrument definition files in the `instrument_docs` folder located at the project's root.
+若您希望擴充或自訂儀器查詢系統，請在專案根目錄下建立一個名為 `instrument_docs` 的資料夾，並將您以 JSON 格式編寫的儀器定義檔案放置於此。
 
-**Example File Structure:** `instrument_docs/spectrometer.json`
+**檔案結構範例：** `instrument_docs/spectrometer.json`
 
 ```json
 {
     "instrument_id": "inst_002",
-    "name": "Spectrometer",
-    "description": "An instrument to measure properties of light over a specific portion of the electromagnetic spectrum.",
+    "name": "光譜儀",
+    "description": "一種用於測量電磁波譜特定部分之光特性的精密儀器。",
     "guide": "spectrometer_guide.txt"
 }
 ```
-*Note: Make sure to also create the corresponding manual file (e.g., `spectrometer_guide.txt`) next to the configuration file.*
+*註：除了 JSON 設定檔之外，請務必於同目錄下建立對應的文字手冊檔案（例如：`spectrometer_guide.txt`）。*
 
 ---
 
-**LabMate AI - Simplifying research, empowering intelligence.**
+**LabMate AI - 讓科研更簡單、更智慧。**

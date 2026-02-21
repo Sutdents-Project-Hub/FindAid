@@ -5,7 +5,7 @@ import sys
 import os
 
 # --- 設定頁面基本佈局 ---
-st.set_page_config(page_title="LabMate AI", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="LabMate AI", layout="wide")
 
 # --- 動態加載 LabMate AI ---
 # 因為原始腳本名稱包含空格，我們使用動態載入
@@ -27,7 +27,7 @@ labmate = st.session_state.labmate
 
 # --- 側邊欄 ---
 with st.sidebar:
-    st.title("LabMate AI 🧪")
+    st.title("LabMate AI")
     st.markdown("您的全方位智慧科研協作夥伴")
     st.divider()
     
@@ -43,7 +43,7 @@ with st.sidebar:
 # --- 主畫面區塊 ---
 
 if page == "實驗數據管理":
-    st.header("📊 實驗數據管理")
+    st.header("實驗數據管理")
     
     tab1, tab2 = st.tabs(["查看實驗", "新增實驗"])
     
@@ -88,7 +88,7 @@ if page == "實驗數據管理":
                     st.warning("請填寫實驗名稱。")
 
 elif page == "實驗計畫協作":
-    st.header("📝 實驗計畫協作")
+    st.header("實驗計畫協作")
     
     tab_view, tab_create = st.tabs(["查看計畫", "建立計畫"])
     
@@ -142,7 +142,7 @@ elif page == "實驗計畫協作":
                     st.warning("請填寫計畫名稱。")
 
 elif page == "AI 科研助理":
-    st.header("🤖 AI 科研助理")
+    st.header("AI 科研助理")
     st.markdown("您可以向 AI 助理提問進階的實驗流程或文獻分析。")
     
     if "messages" not in st.session_state:
@@ -173,7 +173,7 @@ elif page == "AI 科研助理":
         st.session_state.messages.append({"role": "assistant", "content": formatted_response})
 
 elif page == "儀器使用指南":
-    st.header("🔬 儀器使用指南")
+    st.header("儀器使用指南")
     st.markdown("快速查詢實驗室已註冊之儀器手冊。")
     
     search_query = st.text_input("搜尋儀器名稱")
@@ -193,7 +193,7 @@ elif page == "儀器使用指南":
         st.info("沒有找到相符的儀器資料。若是新增文件，請放置於 `instrument_docs` 目錄下並重啟系統。")
 
 elif page == "使用教學":
-    st.header("📖 LabMate AI 使用教學")
+    st.header("LabMate AI 使用教學")
     st.markdown("""
     歡迎使用 LabMate AI 圖形化介面版！以下是核心功能操作指南：
 
