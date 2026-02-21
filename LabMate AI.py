@@ -3,6 +3,28 @@ import datetime
 import json
 import os
 import uuid
+from openai import OpenAI
+
+# --- 透過使用者提供的 API 設定 OpenAI ---
+llm_client = OpenAI(
+    api_key="***REMOVED***",
+    base_url="https://free.v36.cm/v1"
+)
+
+# --- LLM 通用呼叫函數 ---
+def call_llm(prompt, system_message="你是一個專業、嚴謹的實驗室科研 AI 助理。請用繁體中文回答。"):
+    try:
+        response = llm_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"AI 助理連線發生錯誤：{e}"
 
 # --- 配置 ---
 DATABASE_FILE = 'labmate_data.db'
@@ -392,47 +414,52 @@ class LabMateAI:
             return True
         return False
 
-    # --- 實驗設計與規劃模組 ---
+    # --- 實驗設計與規劃模組 (AI 驅動) ---
     def generate_experiment_flow(self, research_goal):
         print(f"根據研究目標 '{research_goal}' 生成實驗流程...")
-        # 這裡可以調用更複雜的邏輯或 AI 模型來生成實驗流程
-        return [
-            {'id': generate_unique_id(), 'description': '初步準備實驗材料和設備。'},
-            {'id': generate_unique_id(), 'description': '執行核心實驗步驟。'},
-            {'id': generate_unique_id(), 'description': '收集實驗數據。'},
-            {'id': generate_unique_id(), 'description': '分析實驗數據並得出結論。'},
-            {'id': generate_unique_id(), 'description': '撰寫實驗報告。'}
-        ]
+        prompt = f"請針對研究目標：「{research_goal}」，提供一個結構化的實驗流程。請以具體的步驟條列出來，不要贅述，確保這是可以直接建立在實驗計畫中的實際操作步驟。"
+        ai_response = call_llm(prompt)
+        
+        # 將 AI 的純文字段落簡單解析為列表物件
+        steps = []
+        for line in ai_response.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                # 簡單清理前面的數字或預設符號
+                import re
+                clean_line = re.sub(r'^(\d+\.|-|\*)\s*', '', line)
+                if clean_line:
+                    steps.append({'id': generate_unique_id(), 'description': clean_line})
+        
+        return steps if steps else [{'id': generate_unique_id(), 'description': 'AI 生成流程失敗，請稍後重試。'}]
 
     def generate_material_list(self, experiment_flow):
         print("根據實驗流程生成材料清單...")
-        materials = []
-        for step in experiment_flow:
-            if "材料" in step['description'] or "設備" in step['description']:
-                materials.append({'name': '範例材料', 'quantity': '適量'})
+        flow_text = "\n".join([step['description'] for step in experiment_flow])
+        prompt = f"根據以下實驗流程，請列出所有需要的實驗材料與相關設備：\n{flow_text}\n\n請盡量以逗號分隔列出名稱即可。"
+        ai_response = call_llm(prompt)
+        materials = [{'name': m.strip(), 'quantity': '依實驗需求'} for m in ai_response.split(',') if m.strip()]
         return materials
 
     def split_problem(self, research_question):
         print(f"將研究問題 '{research_question}' 拆分...")
-        return [
-            f"{research_question} 的第一個子問題。",
-            f"{research_question} 的第二個子問題。",
-            # ... 更多子問題
-        ]
+        prompt = f"請將這個龐大的研究問題：「{research_question}」拆解為 3 到 5 個更具體、更小型的子問題。請只輸出問題本身，一行一個。"
+        ai_response = call_llm(prompt)
+        return [q.strip() for q in ai_response.split('\n') if q.strip()]
 
     def generate_standard_procedure(self, experiment_details):
         print(f"根據實驗細節 '{experiment_details}' 生成標準流程...")
+        prompt = f"針對以下實驗細節：「{experiment_details}」，請撰寫一份嚴謹的標準作業程序 (SOP)。\n請務必包含兩個部分：第一部分為明確的『操作步驟』，第二部分為確保安全的『注意事項』。"
+        ai_response = call_llm(prompt)
+        
+        # 簡單切分這兩部分，若無法精確切分則全放至 procedure
+        parts = ai_response.split("注意事項")
+        procedure_text = parts[0].replace("操作步驟", "").strip()
+        precautions_text = parts[1].strip() if len(parts) > 1 else "請留意一般實驗室安全守則。"
+        
         return {
-            'procedure': [
-                '步驟一：...',
-                '步驟二：...',
-                # ... 更多步驟
-            ],
-            'precautions': [
-                '注意安全。',
-                '嚴格按照步驟操作。',
-                # ... 更多注意事項
-            ]
+            'procedure': [p.strip() for p in procedure_text.split('\n') if p.strip()],
+            'precautions': [p.strip() for p in precautions_text.split('\n') if p.strip()]
         }
 
     # --- 個性化交互方式 (概念性) ---
@@ -456,24 +483,25 @@ class LabMateAI:
             for doc in self.instrument_documents.values():
                 if instrument_name.lower() in doc.name.lower():
                     return f"找到儀器 '{doc.name}' 的描述：{doc.description}。你可以查看使用指南：{doc.usage_guide_path}"
-            return f"未找到關於儀器 '{instrument_name}' 的文檔。"
+            return f"未找到關於儀器 '{instrument_name}' 的文檔。您可以考慮匯入該儀器資料。"
         elif "設計實驗流程" in text:
             goal = text.split("設計實驗流程")[1].strip()
             flow = self.generate_experiment_flow(goal)
-            response_text = f"根據研究目標 '{goal}'，以下是一個基本的實驗流程：\n"
+            response_text = f"根據研究目標 '{goal}'，以下是 AI 幫您建議的實驗流程：\n"
             for i, step in enumerate(flow):
                 response_text += f"{i+1}. {step['description']}\n"
             return response_text
         elif "拆分問題" in text:
             question = text.split("拆分問題")[1].strip()
             sub_problems = self.split_problem(question)
-            return {"子問題": sub_problems}
+            return {"自 AI 拆解的子問題": sub_problems}
         elif "標準流程" in text:
             details = text.split("標準流程")[1].strip()
             procedure = self.generate_standard_procedure(details)
-            return {"標準流程": procedure['procedure'], "注意事項": procedure['precautions']}
-        # ... 更多文本處理邏輯
-        return f"收到您的文字查詢：{text}，正在處理中..."
+            return {"標準操作步驟": procedure['procedure'], "安全注意事項": procedure['precautions']}
+        else:
+            # 不符合任何前綴指令時，作為一般科研問答交給 AI
+            return call_llm(text)
 
     def _transcribe_voice(self, voice_data):
         print("正在將語音轉換為文字...")
