@@ -12,19 +12,21 @@ llm_client = OpenAI(
 )
 
 # --- LLM 通用呼叫函數 ---
-def call_llm(prompt, system_message="你是一個專業、嚴謹的實驗室科研 AI 助理。請用繁體中文回答。"):
+def call_llm(prompt, system_message="你是一個全方位的科研輔助 AI，擅長實驗設計、文獻回顧與資料分析。請用專業且清晰的繁體中文回答。"):
+    print("正在向 AI 獲取回應...")
     try:
         response = llm_client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7
+            temperature=0.7,
         )
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content
     except Exception as e:
-        return f"AI 助理連線發生錯誤：{e}"
+        print(f"AI 呼叫失敗: {e}")
+        return "很抱歉，AI 服務目前無法使用，請稍後再試。"
 
 # --- 配置 ---
 DATABASE_FILE = 'labmate_data.db'
@@ -61,7 +63,8 @@ class Database:
 
     def connect(self):
         try:
-            self.conn = sqlite3.connect(self.db_file)
+            # 加入 check_same_thread=False 以解決 Streamlit 多執行緒存取的問題
+            self.conn = sqlite3.connect(self.db_file, check_same_thread=False)
             self.cursor = self.conn.cursor()
             print(f"成功連接到 SQLite 數據庫: {self.db_file}")
             self._create_tables()

@@ -1,6 +1,0 @@
-{
-    "instrument_id": "inst_001",
-    "name": "光學顯微鏡",
-    "description": "利用可見光透過聚光鏡和物鏡放大物體影像的光學儀器。",
-    "guide": "microscope_guide.txt"
-}
