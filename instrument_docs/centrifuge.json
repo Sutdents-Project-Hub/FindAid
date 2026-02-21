@@ -1,0 +1,6 @@
+{
+    "instrument_id": "inst_002",
+    "name": "离心机",
+    "description": "利用離心力分離液體與固體顆粒或液體與液體混合物的儀器。",
+    "guide": "centrifuge_guide.txt"
+}
