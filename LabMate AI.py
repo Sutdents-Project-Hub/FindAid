@@ -389,6 +389,7 @@ class LabMateAI:
 
     def add_step_to_plan(self, plan_id, step_description):
         if plan_id in self.plans:
+            self.plans[plan_id].add_step(step_description)
             self.database.update('experiment_plans', plan_id, {'steps': json.dumps(self.plans[plan_id].steps)}, id_column='plan_id')
             return True
         return False
@@ -462,6 +463,108 @@ class LabMateAI:
             'precautions': [p.strip() for p in precautions_text.split('\n') if p.strip()]
         }
 
+    # --- AI 自動建立實驗計畫 ---
+    def ai_create_plan_from_chat(self, user_id, description):
+        """根據使用者的自然語言描述，呼叫 AI 自動生成並建立完整的實驗計畫。"""
+        prompt = (
+            f"使用者希望建立一個實驗計畫，以下是他的描述：\n"
+            f"「{description}」\n\n"
+            f"請根據這段描述，以嚴格的 JSON 格式回傳以下結構（不要有任何多餘文字，僅回傳 JSON）：\n"
+            f'{{\n'
+            f'  "name": "計畫名稱",\n'
+            f'  "research_goal": "具體的研究目標",\n'
+            f'  "steps": ["步驟一描述", "步驟二描述", ...],\n'
+            f'  "materials": ["材料一", "材料二", ...]\n'
+            f'}}'
+        )
+        ai_response = call_llm(prompt, system_message="你是一個嚴謹的科研實驗規劃 AI。請務必僅回傳有效的 JSON，不要有任何額外文字。請用繁體中文。")
+        
+        try:
+            # 嘗試從回應中提取 JSON
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', ai_response)
+            if json_match:
+                plan_data = json.loads(json_match.group())
+            else:
+                plan_data = json.loads(ai_response)
+            
+            plan_name = plan_data.get('name', f'AI 自動計畫 - {description[:20]}')
+            research_goal = plan_data.get('research_goal', description)
+            steps_list = plan_data.get('steps', [])
+            materials_list = plan_data.get('materials', [])
+            
+            # 建立計畫
+            new_plan_id = self.create_plan(plan_name, research_goal, user_id)
+            
+            # 新增步驟
+            for step_desc in steps_list:
+                if isinstance(step_desc, str) and step_desc.strip():
+                    self.add_step_to_plan(new_plan_id, step_desc.strip())
+            
+            # 新增材料
+            for mat in materials_list:
+                if isinstance(mat, str) and mat.strip():
+                    self.add_material_to_plan(new_plan_id, mat.strip())
+            
+            plan = self.get_plan(new_plan_id)
+            return {
+                'auto_created_plan': True,
+                'plan_id': new_plan_id,
+                'name': plan_name,
+                'research_goal': research_goal,
+                'steps_count': len(plan.steps),
+                'materials_count': len(plan.materials)
+            }
+        except (json.JSONDecodeError, AttributeError) as e:
+            return f"AI 嘗試建立計畫時發生解析錯誤，以下是 AI 的原始回覆供參考：\n\n{ai_response}"
+
+    # --- AI 審核既有實驗計畫 ---
+    def ai_review_plan(self, plan_id):
+        """讓 AI 審核一個既有的實驗計畫，提出改善建議。"""
+        if plan_id not in self.plans:
+            return "找不到該計畫。"
+        
+        plan = self.plans[plan_id]
+        steps_text = "\n".join([f"{i+1}. {s.get('description', s)}" for i, s in enumerate(plan.steps)]) if plan.steps else "（尚無步驟）"
+        materials_text = ", ".join([m.get('name', str(m)) for m in plan.materials]) if plan.materials else "（尚無材料）"
+        
+        prompt = (
+            f"請審核以下實驗計畫，並提供詳細的改善建議：\n\n"
+            f"計畫名稱：{plan.name}\n"
+            f"研究目標：{plan.research_goal}\n\n"
+            f"目前步驟：\n{steps_text}\n\n"
+            f"所需材料：{materials_text}\n\n"
+            f"請從以下角度進行審核：\n"
+            f"1. 步驟是否完整且順序合理？有無遺漏的關鍵步驟？\n"
+            f"2. 材料清單是否充足？\n"
+            f"3. 是否有安全風險需注意？\n"
+            f"4. 是否有可以優化實驗效率的建議？\n\n"
+            f"最後，請以 JSON 格式額外提供一份您建議的完整改良步驟列表：\n"
+            f'{{"suggested_steps": ["步驟一", "步驟二", ...]}}'
+        )
+        ai_response = call_llm(prompt)
+        
+        # 嘗試提取建議步驟的 JSON
+        import re
+        suggested_steps = []
+        json_match = re.search(r'\{[\s\S]*"suggested_steps"[\s\S]*\}', ai_response)
+        if json_match:
+            try:
+                suggested_data = json.loads(json_match.group())
+                suggested_steps = suggested_data.get('suggested_steps', [])
+                # 將 JSON 從回覆中移除，保留純文字建議
+                review_text = ai_response[:json_match.start()].strip()
+            except json.JSONDecodeError:
+                review_text = ai_response
+        else:
+            review_text = ai_response
+        
+        return {
+            'review_text': review_text if review_text else ai_response,
+            'suggested_steps': suggested_steps,
+            'plan_id': plan_id
+        }
+
     # --- 個性化交互方式 (概念性) ---
     def interact(self, user_id, input_method, query):
         print(f"用戶 {user_id} 使用 {input_method} 進行查詢: {query}")
@@ -484,6 +587,12 @@ class LabMateAI:
                 if instrument_name.lower() in doc.name.lower():
                     return f"找到儀器 '{doc.name}' 的描述：{doc.description}。你可以查看使用指南：{doc.usage_guide_path}"
             return f"未找到關於儀器 '{instrument_name}' 的文檔。您可以考慮匯入該儀器資料。"
+        elif "建立計畫" in text or "建立實驗" in text or "建立一個" in text:
+            # AI 自動建立實驗計畫
+            description = text.replace("幫我", "").replace("請", "").replace("建立計畫", "").replace("建立實驗計畫", "").replace("建立一個", "").replace("建立實驗", "").strip()
+            if not description:
+                description = text
+            return self.ai_create_plan_from_chat(user_id, description)
         elif "設計實驗流程" in text:
             goal = text.split("設計實驗流程")[1].strip()
             flow = self.generate_experiment_flow(goal)
@@ -499,6 +608,12 @@ class LabMateAI:
             details = text.split("標準流程")[1].strip()
             procedure = self.generate_standard_procedure(details)
             return {"標準操作步驟": procedure['procedure'], "安全注意事項": procedure['precautions']}
+        elif "文獻" in text or "論文" in text:
+            keywords = text.replace("搜尋文獻", "").replace("文獻", "").replace("論文", "").strip()
+            return self.scan_literature(keywords if keywords else text)
+        elif "研究方向" in text or "研究建議" in text:
+            topic = text.replace("研究方向", "").replace("研究建議", "").strip()
+            return self.recommend_research_directions(topic if topic else text)
         else:
             # 不符合任何前綴指令時，作為一般科研問答交給 AI
             return call_llm(text)
@@ -514,23 +629,32 @@ class LabMateAI:
     def get_instrument_document(self, instrument_id):
         return self.instrument_documents.get(instrument_id)
 
-    # --- 自動化文獻回顧與研究建議 (概念性) ---
+    # --- 自動化文獻回顧與研究建議 (AI 驅動) ---
     def scan_literature(self, keywords):
         print(f"掃描關鍵字為 '{keywords}' 的最新學術文獻...")
-        return [
-            {"title": "最新文獻1", "abstract": "...", "url": "..."},
-            {"title": "相關研究2", "abstract": "...", "url": "..."},
-            # ... 更多文獻
-        ]
+        prompt = (
+            f"作為一位資深科研顧問，請針對以下研究關鍵字提供文獻探索建議：\n\n"
+            f"研究關鍵字：{keywords}\n\n"
+            f"請提供：\n"
+            f"1. 該領域目前的研究趨勢與熱門方向（3-5 點）\n"
+            f"2. 建議搜尋的學術資料庫（如 PubMed, Google Scholar, Web of Science 等）及推薦的搜尋策略\n"
+            f"3. 相關的經典文獻或里程碑研究方向（3-5 個）\n"
+            f"4. 值得關注的頂尖期刊名稱\n"
+        )
+        return call_llm(prompt)
 
-    def recommend_research_directions(self, experiment_data):
-        print(f"根據實驗數據 '{experiment_data}' 推薦研究方向...")
-        if experiment_data and 'results' in experiment_data:
-            if 'positive' in experiment_data['results']:
-                return ["進一步探索陽性結果的機制。", "嘗試不同的參數以優化結果。"]
-            else:
-                return ["分析實驗失敗的原因。", "調整實驗設計並重新嘗試。"]
-        return ["沒有足夠的實驗數據來提供建議。"]
+    def recommend_research_directions(self, context):
+        print(f"根據上下文 '{context}' 推薦研究方向...")
+        prompt = (
+            f"作為資深科研顧問，請根據以下研究背景或實驗結果，提供深入的研究方向建議：\n\n"
+            f"背景描述：{context}\n\n"
+            f"請提供：\n"
+            f"1. 3-5 個具體且可行的後續研究方向\n"
+            f"2. 每個方向的潛在價值與可行性評估\n"
+            f"3. 可能的研究突破口\n"
+            f"4. 需要注意的研究陷阱或困難\n"
+        )
+        return call_llm(prompt)
 
     def close(self):
         self.database.disconnect()
