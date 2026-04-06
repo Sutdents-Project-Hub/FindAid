@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 
 from labmate import CRISIS_MESSAGE, build_action_plan, classify_need, ensure_schema, get_connection, load_sample_resources, load_settings
 from labmate.llm import build_client, call_llm
+from labmate.open_data import list_open_data_sources
 
 load_dotenv()
 
-st.set_page_config(page_title="行善台北｜青年共融資源助理", layout="wide")
+st.set_page_config(page_title="FindAid｜青年共融資源助理", layout="wide")
 
 
 @st.cache_resource
@@ -89,16 +90,16 @@ seeded = _ensure_seed(conn)
 llm_client = build_client(settings)
 
 with st.sidebar:
-    st.title("行善台北")
-    st.caption("青年共融資源助理（Demo）")
+    st.title("FindAid")
+    st.caption("青年共融資源助理")
     st.divider()
 
-    page = st.radio("功能", ["需求快篩", "資源推薦", "地圖與附近", "行動計畫", "AI 助手", "資料來源"])
+    page = st.radio("功能", ["需求快篩", "資源推薦", "地圖與附近", "行動計畫", "AI 助手", "公開資料同步"])
 
     st.divider()
     st.write("模式：", "離線" if settings["offline"] or llm_client is None else "線上")
     if seeded:
-        st.warning("目前使用示例資料。請替換為臺北市開放資料/主辦方 API。")
+        st.warning("目前使用示例資料。可到「公開資料同步」一鍵匯入雙北官方資料。")
 
 
 if "need_category" not in st.session_state:
@@ -267,7 +268,7 @@ elif page == "AI 助手":
                 else:
                     model = settings.get("openai_model") or "gpt-4o-mini"
                     system_message = (
-                        "你是行善台北：青年共融資源助理。你必須以提供的資源為依據回答，"
+                        "你是 FindAid｜青年共融資源助理。你必須以提供的資源為依據回答，"
                         "不可捏造不存在的服務內容或電話。請用繁體中文。"
                     )
                     context = json.dumps(
@@ -307,34 +308,46 @@ elif page == "AI 助手":
                     st.session_state.chat_messages.append({"role": "assistant", "content": answer})
 
 
-elif page == "資料來源":
-    st.header("資料來源與授權")
+elif page == "公開資料同步":
+    st.header("公開資料同步與授權")
 
     if settings.get("open_data_enabled"):
-        st.subheader("同步開放資料（雙北）")
-        c1, c2 = st.columns(2)
-        with c1:
-            use_tpe = st.checkbox("臺北市 YouBike2.0 站點即時資訊", value=True)
-        with c2:
-            use_ntpc = st.checkbox("新北市 YouBike2.0 站點即時資訊", value=True)
+        st.subheader("同步雙北官方資料")
+        st.write("可把雙北公部門公開資料/API 匯入本地 SQLite，豐富就業、法律、青年、社福、居住、交通與共融相關資源。")
 
-        if use_ntpc and not settings.get("allow_insecure_ssl"):
-            st.info("若同步新北資料失敗（SSL 驗證），可在 .env 設定 LABMATE_ALLOW_INSECURE_SSL=1 後重試。")
+        selected_source_keys = []
+        source_defs = list_open_data_sources()
+        cols = st.columns(2)
+        for idx, source in enumerate(source_defs):
+            with cols[idx % 2]:
+                checked = st.checkbox(source["label"], value=source.get("default", True), help=source.get("description") or "")
+                if checked:
+                    selected_source_keys.append(source["key"])
 
-        if st.button("立即同步"):
+        if selected_source_keys and not settings.get("allow_insecure_ssl"):
+            st.info("針對已內建的雙北官方來源，FindAid 會在必要時自動做 SSL 相容 fallback；若你另外新增其他來源且仍有驗證問題，可在 `.env` 設定 `FINDAID_ALLOW_INSECURE_SSL=1`。")
+
+        if st.button("立即同步官方資料"):
             from labmate import upsert_resources
-            from labmate.open_data import fetch_youbike_ntpc_resources, fetch_youbike_taipei_resources
 
             total = 0
+            breakdown = []
             with st.spinner("同步中..."):
-                if use_tpe:
-                    tpe_resources = fetch_youbike_taipei_resources()
-                    total += upsert_resources(conn, tpe_resources)
-                if use_ntpc:
-                    ntpc_resources = fetch_youbike_ntpc_resources(allow_insecure_ssl=bool(settings.get("allow_insecure_ssl")))
-                    total += upsert_resources(conn, ntpc_resources)
+                for source in source_defs:
+                    if source["key"] not in selected_source_keys:
+                        continue
+                    fetcher = source["fetcher"]
+                    kwargs = {"allow_insecure_ssl": bool(settings.get("allow_insecure_ssl"))}
+                    if "allow_insecure_ssl" not in fetcher.__code__.co_varnames:
+                        kwargs.pop("allow_insecure_ssl", None)
+                    resources = fetcher(**kwargs)
+                    written = upsert_resources(conn, resources)
+                    total += written
+                    breakdown.append(f"- {source['label']}：{written} 筆")
 
             st.success("已寫入 " + str(total) + " 筆資源（INSERT OR REPLACE）。")
+            if breakdown:
+                st.markdown("\n".join(breakdown))
             st.rerun()
 
         st.divider()
@@ -355,4 +368,4 @@ elif page == "資料來源":
 
     st.divider()
     st.write("示例資料檔：data/sample/resources.json")
-    st.write("上線/參賽時，請將示例資料替換為臺北市資料大平臺或主辦方提供的資料來源，並保留 source 欄位。")
+    st.write("FindAid 已可同步多個雙北官方資料集；若要擴充其他資料來源，請保留每筆資源的 `source_*` 欄位。")

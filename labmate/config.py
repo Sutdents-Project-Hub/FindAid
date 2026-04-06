@@ -26,15 +26,42 @@ def _env_int(name, default=0):
         return default
 
 
+def _env_str(names, default=""):
+    for name in names:
+        raw = os.getenv(name)
+        if raw is not None:
+            return raw.strip()
+    return default
+
+
+def _env_bool_compat(names, default=False):
+    for name in names:
+        raw = os.getenv(name)
+        if raw is not None:
+            return _env_bool(name, default=default)
+    return default
+
+
+def _env_int_compat(names, default=0):
+    for name in names:
+        raw = os.getenv(name)
+        if raw is not None:
+            return _env_int(name, default=default)
+    return default
+
+
 def load_settings():
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
     openai_base_url = os.getenv("OPENAI_BASE_URL", "").strip()
     openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
-    database_file = os.getenv("LABMATE_DATABASE_FILE", "labmate_data.db").strip() or "labmate_data.db"
-    offline = _env_bool("LABMATE_OFFLINE", default=False) or (openai_api_key == "")
-    allow_insecure_ssl = _env_bool("LABMATE_ALLOW_INSECURE_SSL", default=False)
-    open_data_enabled = _env_bool("LABMATE_OPEN_DATA_ENABLED", default=True)
-    open_data_ttl_seconds = max(0, _env_int("LABMATE_OPEN_DATA_TTL_SECONDS", default=300))
+    database_file = _env_str(["FINDAID_DATABASE_FILE", "LABMATE_DATABASE_FILE"], "findaid_data.db") or "findaid_data.db"
+    offline = _env_bool_compat(["FINDAID_OFFLINE", "LABMATE_OFFLINE"], default=False) or (openai_api_key == "")
+    allow_insecure_ssl = _env_bool_compat(["FINDAID_ALLOW_INSECURE_SSL", "LABMATE_ALLOW_INSECURE_SSL"], default=False)
+    open_data_enabled = _env_bool_compat(["FINDAID_OPEN_DATA_ENABLED", "LABMATE_OPEN_DATA_ENABLED"], default=True)
+    open_data_ttl_seconds = max(
+        0,
+        _env_int_compat(["FINDAID_OPEN_DATA_TTL_SECONDS", "LABMATE_OPEN_DATA_TTL_SECONDS"], default=300),
+    )
 
     return {
         "openai_api_key": openai_api_key,

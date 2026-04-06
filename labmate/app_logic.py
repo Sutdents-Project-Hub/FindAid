@@ -83,7 +83,7 @@ def build_action_plan(settings, llm_client, need_category, user_text, resources)
 
     model = settings.get("openai_model") or "gpt-4o-mini"
     system_message = (
-        "你是行善台北：青年共融資源助理。你的任務是根據使用者情境與可用資源清單，"
+        "你是 FindAid｜青年共融資源助理。你的任務是根據使用者情境與可用資源清單，"
         "提供可落地、可執行的下一步行動計畫。你必須避免捏造不存在的資訊；若資訊不足，"
         "請在步驟中列出需要確認的欄位。請用繁體中文。"
     )
@@ -134,4 +134,3 @@ def build_action_plan(settings, llm_client, need_category, user_text, resources)
         plan = _template_action_plan(need_category, user_text, resources)
         plan["offline"] = True
         return plan
-
